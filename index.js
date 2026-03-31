@@ -23,10 +23,35 @@ app.post("/enrich", async (req, res) => {
     return res.status(400).json({ error: "No product data provided" });
   }
 
-  const prompt = `Search the web for this product and return ONLY a JSON object, no markdown, no explanation.
-Product: Name: ${name || ""} | Brand: ${brand || ""} | SKU: ${sku || ""} | EAN: ${barcode || ""}
-Return exactly this JSON structure:
-{"official_name":"","ean":"","model_number":"","alternate_names":[],"alternate_model_numbers":[],"alternate_eans":[]}`;
+  const prompt = `You are a product identification expert. Search the web thoroughly for this product and extract every possible identifier and name variation.
+
+Product to search:
+- Name: ${name || ""}
+- Brand: ${brand || ""}
+- Model/SKU: ${sku || ""}
+- EAN/Barcode: ${barcode || ""}
+
+Search for this product on manufacturer websites, retailer sites (Amazon, B&H, Noon, Sharaf DG, etc.), and barcode databases. Look for:
+1. The exact official product name as listed by the manufacturer
+2. All EAN, UPC, GTIN barcodes for this product (different regions may have different barcodes)
+3. All model numbers, part numbers, SKUs used by the manufacturer and retailers
+4. Any bundle or kit variations (e.g. same product sold with accessories)
+5. Regional name variations (e.g. US vs EU vs Middle East naming)
+6. Color/variant specific names and codes
+7. Any previous or alternate product names
+
+Return ONLY this JSON object, no markdown, no explanation:
+{
+  "official_name": "exact official product name from manufacturer",
+  "ean": "primary EAN/UPC barcode",
+  "model_number": "primary official model number",
+  "alternate_names": ["every other name this product is known by, including regional variants"],
+  "alternate_model_numbers": ["all other model numbers, part numbers, SKUs"],
+  "alternate_eans": ["all other EAN/UPC/GTIN codes for this product"],
+  "brand": "confirmed brand name",
+  "category": "product category",
+  "key_specs": "brief key specifications that distinguish this exact variant (color, storage, region, year)"
+}`;
 
   try {
     const response = await fetch("https://api.anthropic.com/v1/messages", {
